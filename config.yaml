@@ -1,0 +1,5 @@
+ROOT:
+  /Users/fan/Documents/Github/ECON2355/
+PDF:
+  INPUT_DIR: data/pdfs
+  OUTPUT_DIR: data/jpgs
