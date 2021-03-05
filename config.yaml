@@ -1,5 +1,18 @@
 ROOT:
   /Users/fan/Documents/Github/ECON2355/
 PDF:
-  INPUT_DIR: data/pdfs
-  OUTPUT_DIR: data/jpgs
+  InputDir: data/pdfs
+  OutputDir: data/jpgs
+
+LAYOUT:
+  HarvardLP:
+    ModelDir: models/HarvardLP
+    OpenDatasets: [ HJDataset, PubLayNet, Prima, Newspaper ]
+    OpenModels:
+      HJDataset: [HJDataset_faster_rcnn_R_50_FPN_3x, ]
+      PubLayNet: [PubLayNet_faster_rcnn_R_50_FPN_3x, PubLayNet_mask_rcnn_X_101_32x8d_FPN_3x]
+      Prima: [Prima_mask_rcnn_R_50_FPN_3x, ]
+      Newspaper: [NewspaperNavigator, ]
+
+
+

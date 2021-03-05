@@ -183,3 +183,7 @@ fabric.properties
 *.iml
 modules.xml
 .coverage
+data/dets
+data/jpgs
+data/pdfs
+models/HarvardLP
