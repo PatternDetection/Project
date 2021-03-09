@@ -68,8 +68,8 @@ class LayoutBaseParser(object):
         return list(zip(map(lambda x: x.replace(img_folder, ""), impaths), results))
 
     @staticmethod
-    def show_bbxes(im, bbxes, show=False):
-        h, w = im.shape[:2]
+    def show_bbxes_on(im, bbxes, show=False):
+        h, w = im.shape[:2]        
         for i, (left, top, right, bottom, rtype, score) in enumerate(bbxes):
             # Convert % to px
             if right < 1 or bottom < 1:
@@ -83,8 +83,6 @@ class LayoutBaseParser(object):
         if show:
             plt.imshow(im)
             plt.show()
-
-        return im
 
     @staticmethod
     def verify_saved_dets(pkl_path, im_root, draw_dir):
@@ -162,7 +160,7 @@ class HarvardLayoutParser(LayoutBaseParser):
 
 
 if __name__ == '__main__':
-    with open("../../config.yaml") as f:
+    with open("../config.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     hlp_conf = config["LAYOUT"]["HarvardLP"]

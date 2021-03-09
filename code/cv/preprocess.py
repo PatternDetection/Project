@@ -14,12 +14,14 @@ def convert_pdf_to_jpg(pdf_path, output_dir=None, first_page_only=True, dpi=200,
                                    fmt="jpg")
     except:
         print(f"Error: {pdf_path}")
-        return None
+        return None 
+
+
+    if first_page_only:
+            images = images[:1]
 
     if output_dir is not None:
         filename = os.path.basename(pdf_path).replace(".pdf", "")
-        if first_page_only:
-            images = images[:1]
 
         for i, x in enumerate(images):
             x.save(os.path.join(output_dir, f"{filename}-{i}.jpg"))
@@ -55,7 +57,7 @@ def batch_convert_pdfs_to_jpgs(input_dir, output_dir, first_page_only=True, dpi=
 
 
 if __name__ == '__main__':
-    with open("../../config.yaml") as f:
+    with open("../config.yaml") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     batch_convert_pdfs_to_jpgs(os.path.join(config["ROOT"], config["PDF"]["InputDir"]),
