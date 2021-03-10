@@ -68,16 +68,22 @@ class LayoutBaseParser(object):
         return list(zip(map(lambda x: x.replace(img_folder, ""), impaths), results))
 
     @staticmethod
+    def percent_to_px(im_h, im_w, bbx):
+        left, top, right, bottom = bbx[:4]
+        if right < 1 or bottom < 1:
+            left = int(left * im_w)
+            top = int(top * im_h)
+            right = int(right * im_w)
+            bottom = int(bottom * im_h)
+
+        return left, top, right, bottom
+
+    @staticmethod
     def show_bbxes_on(im, bbxes, show=False):
-        h, w = im.shape[:2]        
+        h, w = im.shape[:2]
         for i, (left, top, right, bottom, rtype, score) in enumerate(bbxes):
             # Convert % to px
-            if right < 1 or bottom < 1:
-                left = int(left * w)
-                top = int(top * h)
-                right = int(right * w)
-                bottom = int(bottom * h)
-
+            left, top, right, bottom = LayoutBaseParser.percent_to_px(h, w, (left, top, right, bottom))
             cv2.rectangle(im, (left, top), (right, bottom), color=128, thickness=5)
 
         if show:
@@ -96,6 +102,11 @@ class LayoutBaseParser(object):
             im = cv2.imread(impath)
             LayoutBaseParser.show_bbxes(im, result)
             cv2.imwrite(savepath, im)
+
+    @staticmethod
+    def crop(im, bbx):
+        left, top, right, bottom = LayoutBaseParser.percent_to_px(im.shape[0], im.shape[1], bbx[:4])
+        return im[top: bottom + 1, left: right + 1]
 
 
 class HarvardLayoutParser(LayoutBaseParser):
