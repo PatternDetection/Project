@@ -47,7 +47,7 @@ class LayoutBaseParser(object):
         # left(%), top(%), right(%), bottom(%), bbx_type(str)
         raise NotImplementedError
 
-    def batch_detect(self, img_folder, start=0, end=100):
+    def batch_detect(self, img_folder, start=-1, end=-1):
 
         impaths = []
 
@@ -56,8 +56,10 @@ class LayoutBaseParser(object):
             files = map(lambda f: os.path.join(dirpath, f), valids)
             impaths.extend(files)
 
-        impaths = list(sorted(impaths))[start: end]
-        print(f"Found {len(impaths)} images.")
+        impaths = list(sorted(impaths))
+        if end > start >= 0:
+            imgpaths = impaths[start: end]
+        print(f"Process {len(impaths)} images.")
 
         with futures.ProcessPoolExecutor() as executor:
             results = list(tqdm(executor.map(self.detect, impaths), total=len(impaths)))
@@ -100,7 +102,7 @@ class LayoutBaseParser(object):
             impath = os.path.join(im_root, relpath)
 
             im = cv2.imread(impath)
-            LayoutBaseParser.show_bbxes(im, result)
+            LayoutBaseParser.show_bbxes_on(im, result)
             cv2.imwrite(savepath, im)
 
     @staticmethod

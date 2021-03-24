@@ -5,6 +5,7 @@ import ssl
 
 ssl._create_default_https_context = ssl._create_unverified_context
 
+import os
 import json
 import base64
 from urllib.request import urlopen
@@ -16,7 +17,10 @@ import cv2
 
 
 class BaiduOCR(object):
-    OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic"
+    # OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/accurate_basic"
+    OCR_URL = "https://aip.baidubce.com/rest/2.0/ocr/v1/general_basic"
+
+
     TOKEN_URL = 'https://aip.baidubce.com/oauth/2.0/token'
 
     def __init__(self, API_KEY=None, SECRET_KEY=None, token=None):
@@ -43,7 +47,10 @@ class BaiduOCR(object):
         f = urlopen(req)
         resp = json.loads(f.read().decode())
 
-        return [r["words"] for r in resp["words_result"]]
+        try:
+            return [r["words"] for r in resp["words_result"]]
+        except:
+            print(resp)
 
     def query_filepath(self, path):
         im = open(path, "rb").read()
