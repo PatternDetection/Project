@@ -188,5 +188,4 @@ data/jpgs
 data/pdfs
 models/
 code/config.yaml
-data/OCR
-data/vis
+data/
