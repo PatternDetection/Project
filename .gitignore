@@ -183,9 +183,10 @@ fabric.properties
 *.iml
 modules.xml
 .coverage
-data/dets
-data/jpgs
-data/pdfs
 models/
 code/config.yaml
 data/
+code/cv/local*
+code/cv/localpipeline.py
+code/cv/localpipeline.py
+code/cv/split_train_test.py
