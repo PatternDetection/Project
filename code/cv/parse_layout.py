@@ -1,4 +1,5 @@
 import os
+import glob
 import pickle
 from functools import wraps
 from concurrent import futures
@@ -32,6 +33,37 @@ def detect_wrapper(fn):
     return wrap
 
 
+def percent_to_px(im_h, im_w, bbx):
+    left, top, right, bottom = bbx[:4]
+    if right < 1 or bottom < 1:
+        left = int(left * im_w)
+        top = int(top * im_h)
+        right = int(right * im_w)
+        bottom = int(bottom * im_h)
+
+    return left, top, right, bottom
+
+
+def show_bbxes_on(im, bbxes, show=False, color=128):
+    if isinstance(im, str):
+        im = cv2.imread(im)
+
+    h, w = im.shape[:2]
+    for i, item in enumerate(bbxes):
+        try:
+            left, top, right, bottom, rtype, score = item
+        except:
+            left, top, right, bottom = item[:4]
+
+        # Convert % to px
+        left, top, right, bottom = percent_to_px(h, w, (left, top, right, bottom))
+        cv2.rectangle(im, (left, top), (right, bottom), color=color, thickness=5)
+
+    if show:
+        plt.imshow(im)
+        plt.show()
+
+
 class LayoutBaseParser(object):
 
     def detect(self, im, *args, **kwargs):
@@ -48,6 +80,16 @@ class LayoutBaseParser(object):
         raise NotImplementedError
 
     def batch_detect(self, img_folder, start=-1, end=-1):
+        def fn(impath):
+            x = cv2.imread(impath)
+            r = self.detect(impath)
+
+            return {
+                "path": impath,
+                "h": x.shape[0],
+                "w": x.shape[1],
+                "layout": r
+            }
 
         impaths = []
 
@@ -58,57 +100,18 @@ class LayoutBaseParser(object):
 
         impaths = list(sorted(impaths))
         if end > start >= 0:
-            imgpaths = impaths[start: end]
+            impaths = impaths[start: end]
         print(f"Process {len(impaths)} images.")
 
-        with futures.ProcessPoolExecutor() as executor:
-            results = list(tqdm(executor.map(self.detect, impaths), total=len(impaths)))
+        with futures.ThreadPoolExecutor() as executor:
+            # results = list(tqdm(executor.map(self.detect, impaths), total=len(impaths)))
+            results = list(tqdm(executor.map(fn, impaths), total=len(impaths)))
 
-        if not img_folder.endswith("/"):
-            img_folder += "/"
-
-        return list(zip(map(lambda x: x.replace(img_folder, ""), impaths), results))
-
-    @staticmethod
-    def percent_to_px(im_h, im_w, bbx):
-        left, top, right, bottom = bbx[:4]
-        if right < 1 or bottom < 1:
-            left = int(left * im_w)
-            top = int(top * im_h)
-            right = int(right * im_w)
-            bottom = int(bottom * im_h)
-
-        return left, top, right, bottom
-
-    @staticmethod
-    def show_bbxes_on(im, bbxes, show=False):
-        h, w = im.shape[:2]
-        for i, (left, top, right, bottom, rtype, score) in enumerate(bbxes):
-            # Convert % to px
-            left, top, right, bottom = LayoutBaseParser.percent_to_px(h, w, (left, top, right, bottom))
-            cv2.rectangle(im, (left, top), (right, bottom), color=128, thickness=5)
-
-        if show:
-            plt.imshow(im)
-            plt.show()
-
-    @staticmethod
-    def verify_saved_dets(pkl_path, im_root, draw_dir):
-        with open(pkl_path, "rb") as f:
-            data = pickle.load(f)
-
-        for relpath, result in data:
-            savepath = os.path.join(draw_dir, relpath.replace("/", "-"))
-            impath = os.path.join(im_root, relpath)
-
-            im = cv2.imread(impath)
-            LayoutBaseParser.show_bbxes_on(im, result)
-            cv2.imwrite(savepath, im)
-
-    @staticmethod
-    def crop(im, bbx):
-        left, top, right, bottom = LayoutBaseParser.percent_to_px(im.shape[0], im.shape[1], bbx[:4])
-        return im[top: bottom + 1, left: right + 1]
+        # if not img_folder.endswith("/"):
+        #     img_folder += "/"
+        # return list(zip(map(lambda x: x.replace(img_folder, ""), impaths), results))
+        # return list(zip(impaths, results))
+        return results
 
 
 class HarvardLayoutParser(LayoutBaseParser):
@@ -173,26 +176,51 @@ class HarvardLayoutParser(LayoutBaseParser):
 
 
 if __name__ == '__main__':
-    with open("../config.yaml") as f:
-        config = yaml.load(f, Loader=yaml.FullLoader)
-
-    hlp_conf = config["LAYOUT"]["HarvardLP"]
-    dataset = "Prima"
-    modelname = hlp_conf["OpenModels"][dataset][0]
+    models_dir = "../../models"
+    jpgs_dir = "../../data/jpgs"
+    layout_output_dir = "../../data/layout"
+    vis_output_dir = "../../data/vis"
     score_thresh = 0.2
-    parser = HarvardLayoutParser(dataset,
-                                 model_path=os.path.join(config["ROOT"], hlp_conf["ModelDir"], modelname + ".pth"),
-                                 config_path=os.path.join(config["ROOT"], hlp_conf["ModelDir"], modelname + ".yml"),
-                                 score_thresh=score_thresh)
+    override = False
+    vis = True
 
-    start, end = 0, 100
-    results = parser.batch_detect(os.path.join(config["ROOT"], config["PDF"]["OutputDir"]), start=start, end=end)
-    output_path = os.path.join(config["ROOT"], f"data/dets/{modelname}_{start}_{end}.pkl")
-    pickle.dump(results, open(output_path, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+    for dataset in os.listdir(models_dir):
+        subdir = os.path.join(models_dir, dataset)
+        configs = glob.glob(os.path.join(subdir, "*.yaml"))
 
-    print("Detection results:")
-    print(output_path)
+        for conf in configs:
+            pth = conf.replace("yaml", "pth")
+            name = f"{dataset}-{os.path.basename(conf).split(',')[0]}"
+            print(f"===={name}====")
 
-    LayoutBaseParser.verify_saved_dets(output_path,
-                                       os.path.join(config["ROOT"], config["PDF"]["OutputDir"]),
-                                       "/Users/fan/Documents/Github/ECON2355_data/vis")
+            parser = HarvardLayoutParser(dataset,
+                                         model_path=pth,
+                                         config_path=conf,
+                                         score_thresh=score_thresh)
+
+            layout_outpath = os.path.join(layout_output_dir, f"{dataset}_{name}")
+            if override or not os.path.exists(layout_outpath):
+                results = parser.batch_detect(jpgs_dir)
+                print(results[0])
+                pickle.dump(results, open(layout_outpath, "wb"), protocol=pickle.HIGHEST_PROTOCOL)
+            else:
+                results = None
+
+            if vis:
+                if results is None:
+                    results = pickle.load(open(layout_outpath, "rb"))
+
+                this_dir = os.path.join(vis_output_dir, name)
+                os.makedirs(this_dir, exist_ok=True)
+
+
+                def draw_and_save(item):
+                    impath = item["path"]
+                    layout = item["layout"]
+                    x = cv2.imread(impath)
+                    show_bbxes_on(x, layout)
+                    cv2.imwrite(os.path.join(this_dir, os.path.basename(impath)), x)
+
+
+                with futures.ProcessPoolExecutor() as executor:
+                    results = list(tqdm(executor.map(draw_and_save, results), total=len(results)))
