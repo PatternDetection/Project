@@ -27,8 +27,8 @@ def detect_wrapper(fn):
 
             return fn(parser, im, *args, **kwargs)
 
-        except:
-            print(f"Error: {impath}")
+        except Exception as e:
+            print(f"Error: {e} {impath}")
 
     return wrap
 
@@ -122,10 +122,11 @@ class HarvardLayoutParser(LayoutBaseParser):
         "HJDataset": {1: "Page Frame", 2: "Row", 3: "Title Region", 4: "Text Region", 5: "Title", 6: "Subtitle",
                       7: "Other"},
         "PubLayNet": {0: "Text", 1: "Title", 2: "List", 3: "Table", 4: "Figure"},
-        "Prima": {1: "TextRegion", 2: "ImageRegion", 3: "TableRegion", 4: "MathsRegion", 5: "SeparatorRegion",
-                  6: "OtherRegion"},
-        "Newspaper": {0: "Photograph", 1: "Illustration", 2: "Map", 3: "Comics/Cartoon", 4: "Editorial Cartoon",
-                      5: "Headline", 6: "Advertisement"}
+        "PrimaLayout": {1: "TextRegion", 2: "ImageRegion", 3: "TableRegion", 4: "MathsRegion", 5: "SeparatorRegion",
+                        6: "OtherRegion"},
+        "NewspaperNavigator": {0: "Photograph", 1: "Illustration", 2: "Map", 3: "Comics/Cartoon",
+                               4: "Editorial Cartoon",
+                               5: "Headline", 6: "Advertisement"}
 
     }
 
@@ -140,8 +141,11 @@ class HarvardLayoutParser(LayoutBaseParser):
 
     @staticmethod
     def is_text(type_cls):
-        s = type_cls.lower()
-        return "text" in s or "title" in s or "headline" in s
+        try:
+            s = type_cls.lower()
+            return "text" in s or "title" in s or "headline" in s
+        except:
+            return True
 
     @detect_wrapper
     def detect(self, im, keep_text_only=True, dump_to_tuples=True, **kwargs):
@@ -190,7 +194,7 @@ if __name__ == '__main__':
 
         for conf in configs:
             pth = conf.replace("yaml", "pth")
-            name = f"{dataset}-{os.path.basename(conf).split(',')[0]}"
+            name = f"{dataset}-{os.path.basename(conf).split('.')[0]}"
             print(f"===={name}====")
 
             parser = HarvardLayoutParser(dataset,
@@ -198,7 +202,7 @@ if __name__ == '__main__':
                                          config_path=conf,
                                          score_thresh=score_thresh)
 
-            layout_outpath = os.path.join(layout_output_dir, f"{dataset}_{name}")
+            layout_outpath = os.path.join(layout_output_dir, f"{name}")
             if override or not os.path.exists(layout_outpath):
                 results = parser.batch_detect(jpgs_dir)
                 print(results[0])
@@ -211,7 +215,10 @@ if __name__ == '__main__':
                     results = pickle.load(open(layout_outpath, "rb"))
 
                 this_dir = os.path.join(vis_output_dir, name)
-                os.makedirs(this_dir, exist_ok=True)
+                if os.path.exists(this_dir):
+                    continue
+
+                os.makedirs(this_dir, exist_ok=False)
 
 
                 def draw_and_save(item):
@@ -222,5 +229,5 @@ if __name__ == '__main__':
                     cv2.imwrite(os.path.join(this_dir, os.path.basename(impath)), x)
 
 
-                with futures.ProcessPoolExecutor() as executor:
+                with futures.ThreadPoolExecutor() as executor:
                     results = list(tqdm(executor.map(draw_and_save, results), total=len(results)))
