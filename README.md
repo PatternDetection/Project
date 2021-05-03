@@ -21,4 +21,4 @@ Demo of CV module can be found in `./notebooks/`. To process files in batch, ple
     * Run `code/cv/parse_layout.jpy`
     * Call functions in `code/cv/evaluate.py`. `notebooks/evaluate.ipynb` is recommended to see the usage.
 * To finetune model, xxx
-* Finally, run `code/cv/OCR.py` to extract characters.
+* Finally, run `code/cv/OCR.py` to extract characters, but `API_KEY` and `API_SECRET` is required.
