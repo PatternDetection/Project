@@ -26,10 +26,12 @@ def parse_label_xml(xml_path):
 
 
 def parse_pred(item, min_width=0.5, score_thresh=0.5):
-    imgname, preds = item
+    """ Use px to represent bbx """
+    impath = item["path"]
+    preds = item["layout"]
+    h = item["h"]
+    w = item["w"]
 
-    t = cv2.imread(imgname)
-    h, w = t.shape[:2]
     bbxes = []
 
     for l, t, r, b, c, s in preds:
@@ -43,12 +45,13 @@ def parse_pred(item, min_width=0.5, score_thresh=0.5):
 
         bbxes.append((l, t, r, b))
 
-    return os.path.basename(imgname), bbxes
+    return impath, bbxes
 
 
 def count_intersection(pred, gt, offset=1):
-    return (np.min([pred[:, 2], gt[:, 2]], axis=0) + offset - np.max([pred[:, 0], gt[:, 0]], axis=0)) * (
-            np.min([pred[:, 3], gt[:, 3]], axis=0) + offset - np.max([pred[:, 1], gt[:, 1]], axis=0))
+    return np.clip(np.min([pred[:, 2], gt[:, 2]], axis=0) + offset - np.max([pred[:, 0], gt[:, 0]], axis=0), a_min=0,
+                   a_max=None, ) * np.clip(
+        np.min([pred[:, 3], gt[:, 3]], axis=0) + offset - np.max([pred[:, 1], gt[:, 1]], axis=0), a_min=0, a_max=None)
 
 
 def count_area(coord, offset=1):
@@ -56,7 +59,7 @@ def count_area(coord, offset=1):
     return (r - l + offset) * (b - t + offset)
 
 
-def cal_max_iou(pred, gt, offset=1):
+def cal_max_iox(pred, gt, if_ioa=False, offset=1):
     if len(pred) == 0:
         return 0
 
@@ -71,13 +74,17 @@ def cal_max_iou(pred, gt, offset=1):
     if ai <= 0:
         return 0
 
-    a1 = count_area(gt[k])
-    a2 = count_area(pred[k])
+    ## IoU
+    # a1 = count_area(gt[k], offset)
+    # a2 = count_area(pred[k], offset)
+    #
+    # return ai / (a1 + a2 - ai)
 
-    return ai / (a1 + a2 - ai)
+    ## IoA
+    return ai / count_area(gt[k], offset)
 
 
-def cal_accumulated_iou(pred, gt, offset=1):
+def cal_accumulated_iox(pred, gt, if_ioa=False, offset=1, joint_thresh=0.2):
     if len(pred) == 0:
         return 0, None
 
@@ -85,8 +92,11 @@ def cal_accumulated_iou(pred, gt, offset=1):
     gt = np.array(gt).reshape(1, 4)
     gt = np.tile(gt, len(pred)).reshape(-1, 4)
 
+    a1 = count_area(gt[0], offset)
+    thresh = a1 * joint_thresh
+
     intersections = count_intersection(pred, gt, offset)
-    k = intersections > 0
+    k = intersections > thresh
 
     if np.sum(k) <= 0:
         return 0, None
@@ -96,9 +106,14 @@ def cal_accumulated_iou(pred, gt, offset=1):
     right = np.max(pred[k, 2])
     bottom = np.max(pred[k, 3])
 
-    pred = np.array([[left, top, right, bottom]])
+    rect = [left, top, right, bottom]
+    pred = np.array([rect])
     ai = count_intersection(pred, gt[:1], offset)
-    a1 = count_area(gt[0])
-    a2 = count_area(pred[0])
+    a1 = count_area(gt[0], offset)
 
-    return ai / (a1 + a2 - ai), (left, top, right, bottom)
+    if if_ioa:
+        ioa = ai / a1
+        return ioa.item(), rect
+
+    a2 = count_area(pred[0], offset)
+    return (ai / (a1 + a2 - ai)).item(), rect
