@@ -1,0 +1,11 @@
+# pdf2image depends on the installation of poppler
+# Please refer to: https://pypi.org/project/pdf2image/
+pdf2image
+yaml
+numpy
+cv2
+matplotlib
+tqdm
+# layoutparser depends on detectron2
+# Please refer to: https://github.com/Layout-Parser/layout-parser
+layoutparser
