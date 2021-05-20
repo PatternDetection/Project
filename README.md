@@ -2,13 +2,6 @@
 
 ## Econ 2355, Unleashing Novel Data at Scale, Spring 2021
 
-### Group Members
-
-* Chenfan Zhuang
-* Xin Zeng
-* Qinyi Chen
-* Yujie Cai
-
 ## Installation
 Please read 'requirements.txt' for details. 
 
